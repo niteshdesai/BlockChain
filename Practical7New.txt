@@ -1,0 +1,78 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+
+import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+
+contract Practical7 {
+    
+    mapping(address => uint256) public addressToAmountFunded; 
+
+ 
+    address[] public funders;
+
+ AggregatorV3Interface internal pricefeed;
+    address public owner; 
+
+    constructor() {
+        owner = msg.sender;
+        pricefeed=AggregatorV3Interface(0x694AA1769357215DE4FAC081bf1f309aDC325306);
+
+
+    }
+
+
+    function fund() public payable {
+        require(msg.value > 0, "You need to send some ETH!"); 
+        addressToAmountFunded[msg.sender] += msg.value; 
+        funders.push(msg.sender); 
+    }
+
+    
+    function getVersion() public view returns (uint256) {
+        
+       
+        return pricefeed.version(); 
+    }
+
+
+    function getPrice() public view returns (int256) {
+      
+        
+        (, int256 answer, , , ) = pricefeed.latestRoundData();
+        return answer /1e8; 
+    }
+
+   
+    function getConversionRate(int256 ethAmount) public view returns (int256) {
+        int256 ethPrice = getPrice(); 
+        int256 ethAmountInUsd = (ethPrice * ethAmount); 
+        return ethAmountInUsd;
+    }
+
+  
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Not contract owner"); 
+        _; 
+    }
+
+   
+    function withdraw() public onlyOwner {
+       
+        (bool success, ) = payable(msg.sender).call{value: address(this).balance}("");
+        require(success, "Transfer failed"); 
+
+       
+        for (uint256 i = 0; i < funders.length; i++) { 
+            address funder = funders[i];
+            addressToAmountFunded[funder] = 0; 
+        }
+
+        funders = new address[](0) ; 
+    }
+
+    
+    function getBalance() public view returns (uint256) {
+        return address(this).balance; 
+    }
+}
